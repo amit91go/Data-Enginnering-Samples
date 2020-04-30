@@ -1,7 +1,6 @@
 package ay.kafka.producer;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -15,11 +14,9 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import com.google.gson.Gson;
 import com.twitter.hbc.ClientBuilder;
 import com.twitter.hbc.core.Client;
 import com.twitter.hbc.core.Constants;
-import com.twitter.hbc.core.Constants.FilterLevel;
 import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint;
 import com.twitter.hbc.core.processor.StringDelimitedProcessor;
 import com.twitter.hbc.httpclient.auth.Authentication;
@@ -43,7 +40,6 @@ public class TwitterProducer {
     private Client client;
     private BlockingQueue<String> queue;
     Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
-    private Gson gson;
 
     public TwitterProducer() {
         // Configure auth
@@ -54,7 +50,7 @@ public class TwitterProducer {
                 TwitterConfiguration.TOKEN_SECRET);
 
         StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
-        endpoint.trackTerms(Arrays.asList(TwitterConfiguration.HASHTAG));
+        endpoint.trackTerms(Arrays.asList(TwitterConfiguration.TWITTER_TERM));
 
         queue = new LinkedBlockingQueue<>(10000);
 
@@ -64,8 +60,7 @@ public class TwitterProducer {
                 .endpoint(endpoint)
                 .processor(new StringDelimitedProcessor(queue))
                 .build();
-         gson = new Gson();
-       // callback = new BasicCallback();
+
     }
 
     private Producer<Long, String> getProducer() {
@@ -86,9 +81,8 @@ public class TwitterProducer {
         try (Producer<Long, String> producer = getProducer()) {
             while (true) {
             	key++;
-                Entities tweet = gson.fromJson(queue.take(), Entities.class); 
-                logger.info(tweet.toString());
-                ProducerRecord<Long, String> record = new ProducerRecord<>(KafkaConfiguration.TOPIC, key, tweet.getText());
+                String tweet = queue.take(); 
+                ProducerRecord<Long, String> record = new ProducerRecord<>(KafkaConfiguration.TOPIC, key, tweet);
                 producer.send(record, new Callback() {
 
 					@Override
