@@ -33,57 +33,57 @@ public class TwitterProducer {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		TwitterProducer producer = new TwitterProducer();
-        producer.run();
-		
+		producer.run();
+
 	}
-	
-    private Client client;
-    private BlockingQueue<String> queue;
-    Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
 
-    public TwitterProducer() {
-        // Configure auth
-        Authentication authentication = new OAuth1(
-                TwitterConfiguration.CONSUMER_KEY,
-                TwitterConfiguration.CONSUMER_SECRET,
-                TwitterConfiguration.ACCESS_TOKEN,
-                TwitterConfiguration.TOKEN_SECRET);
+	private Client client;
+	private BlockingQueue<String> queue;
+	Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
 
-        StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
-        endpoint.trackTerms(Arrays.asList(TwitterConfiguration.TWITTER_TERM));
+	public TwitterProducer() {
+		// Configure auth
+		Authentication authentication = new OAuth1(
+				TwitterConfiguration.CONSUMER_KEY,
+				TwitterConfiguration.CONSUMER_SECRET,
+				TwitterConfiguration.ACCESS_TOKEN,
+				TwitterConfiguration.TOKEN_SECRET);
 
-        queue = new LinkedBlockingQueue<>(10000);
+		StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
+		endpoint.trackTerms(Arrays.asList(TwitterConfiguration.TWITTER_TERM));
 
-        client = new ClientBuilder()
-                .hosts(Constants.STREAM_HOST)
-                .authentication(authentication)
-                .endpoint(endpoint)
-                .processor(new StringDelimitedProcessor(queue))
-                .build();
+		queue = new LinkedBlockingQueue<>(10000);
 
-    }
+		client = new ClientBuilder()
+				.hosts(Constants.STREAM_HOST)
+				.authentication(authentication)
+				.endpoint(endpoint)
+				.processor(new StringDelimitedProcessor(queue))
+				.build();
 
-    private Producer<Long, String> getProducer() {
-        Properties properties = new Properties();
-        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfiguration.SERVERS);
-        properties.put(ProducerConfig.ACKS_CONFIG, "1");
-        properties.put(ProducerConfig.LINGER_MS_CONFIG, 500);
-        properties.put(ProducerConfig.RETRIES_CONFIG, 0);
-        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
-        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+	}
 
-        return new KafkaProducer<>(properties);
-    }
+	private Producer<Long, String> getProducer() {
+		Properties properties = new Properties();
+		properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfiguration.SERVERS);
+		properties.put(ProducerConfig.ACKS_CONFIG, "1");
+		properties.put(ProducerConfig.LINGER_MS_CONFIG, 500);
+		properties.put(ProducerConfig.RETRIES_CONFIG, 0);
+		properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
+		properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-    public void run() {
-        client.connect();
-        Long key = 0L;
-        try (Producer<Long, String> producer = getProducer()) {
-            while (true) {
-            	key++;
-                String tweet = queue.take(); 
-                ProducerRecord<Long, String> record = new ProducerRecord<>(KafkaConfiguration.TOPIC, key, tweet);
-                producer.send(record, new Callback() {
+		return new KafkaProducer<>(properties);
+	}
+
+	public void run() {
+		client.connect();
+		Long key = 0L;
+		try (Producer<Long, String> producer = getProducer()) {
+			while (true) {
+				key++;
+				String tweet = queue.take(); 
+				ProducerRecord<Long, String> record = new ProducerRecord<>(KafkaConfiguration.TOPIC, key, tweet);
+				producer.send(record, new Callback() {
 
 					@Override
 					public void onCompletion(RecordMetadata metadata, Exception exception) {
@@ -96,18 +96,18 @@ public class TwitterProducer {
 						{
 							logger.info(metadata.topic()+ ":" +metadata.offset()+ ":" + metadata.partition());							
 						}
-						
+
 					}
-                	
-                });
-                
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            client.stop();
-        }
-    }
+
+				});
+
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			client.stop();
+		}
+	}
 
 
 }
